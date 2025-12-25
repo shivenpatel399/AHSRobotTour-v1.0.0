@@ -153,6 +153,7 @@ void subLeftNew(int baseSpeed, int slowLimit) {
 
 }
 
+
 void subRightNew(int baseSpeed, int slowLimit) {
   counter_A = 0;
   counter_B = 0;
@@ -210,6 +211,7 @@ void subRightNew(int baseSpeed, int slowLimit) {
   display.display();
 
 }
+
 
 
 void PD(int thesteps, int power, float gain) {

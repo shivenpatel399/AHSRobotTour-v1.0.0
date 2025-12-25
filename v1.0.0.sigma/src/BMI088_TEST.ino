@@ -288,6 +288,89 @@ void subRight(float speed) { // 32 is official speed with 85 degrees
 
 
 
+void DecelAccel(int thesteps) {
+  
+  // ---- piecewise parameters ----
+  float b = 185;     // slowest (start+end)
+  float a = -60;    // decrease toward faster speed (PWM decreases to speed up)
+  float c1 = 0.15;   // accelerate first 15%
+  float c2 = 0.85;   // decelerate last 15%
+  
+  counter_A = 0;
+  counter_B = 0;
+  resetYaw();
+  yaw = resetYaw();
+  target = yaw;
+
+  while ((thesteps * 2) > counter_A + counter_B) {
+
+    float progress = float(counter_A + counter_B) / float(thesteps * 2);   // 0 → 1
+
+    float basePower;
+
+    float gain;
+
+    // DECAY phase 0 → 0.15
+    if(progress <= c1){
+        float x = progress / c1; // map segment to 0→1
+        basePower = b + a * (1 - cos(PI*x)) / 2; // a/2 * cos(x * PI) + (a/2 + b);
+    }
+
+    // CONSTANT PHASE
+    else if(progress > c1 && progress < c2){
+        basePower = b + a; // sustain fastest
+    }
+
+    // GROWTH phase 0.85 → 1
+    else{
+        float x = (progress - c2) / (1 - c2); // normalize to 0→1
+        basePower = (b + a) + (-a) * (1 - cos(PI*x)) / 2; // a/2 * cos(x * PI) + (a/2 + b);
+    }
+
+    gain = 4.99 + 0.0501 * basePower - 5.33e-04 * basePower * basePower + 1.39e-06 * basePower * basePower * basePower;
+
+    computeYaw();
+    yaw = computeYaw();
+    thecorrection = target - float(yaw);
+    
+
+    powerLeft  = basePower - (gain * thecorrection);
+    powerRight = basePower + (gain * thecorrection);
+
+    powerLeft  = constrain(powerLeft,  0, 255);
+    powerRight = constrain(powerRight, 0, 255);
+
+    analogWrite(enA, powerLeft);
+    analogWrite(enB, powerRight);
+
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.print(" Power A: ");
+    display.println(powerLeft);
+    display.print(" Power B: ");
+    display.println(powerRight);
+    display.print(" Counter A: ");
+    display.println(counter_A);
+    display.print(" Counter B: ");
+    display.println(counter_B);
+    display.print(" Angle: ");
+    display.println(float(yaw));
+    display.print(" Target: ");
+    display.println(target);
+    display.print(" Error: ");
+    display.println(thecorrection);
+    display.display();
+  } 
+  
+  stop();
+  computeYaw();
+}
+
+
 void PD(int thesteps, int power, float gain) {
   counter_A = 0;
   counter_B = 0;
@@ -304,44 +387,11 @@ void PD(int thesteps, int power, float gain) {
     analogWrite(enB, powerRight);
     digitalWrite(in1, HIGH);
     digitalWrite(in2, LOW);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.print(" Angle: ");
-    display.println(float(yaw));
-    display.print(" Target: ");
-    display.println(target);
-    display.print(" Error: ");
-    display.println(thecorrection);
-    display.print(" CountA: ");
-    display.println(counter_A);
-    display.print(" CountB: ");
-    display.println(counter_B);
-    display.display();
+    
     } 
   stop();
   computeYaw();
   yaw = computeYaw();
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.print(" Angle: ");
-  display.println(float(yaw));
-  display.print(" Target: ");
-  display.println(target);
-  display.print(" Error: ");
-  display.println(thecorrection);
-  display.print(" CountA: ");
-  display.println(counter_A);
-  display.print(" CountB: ");
-  display.println(counter_B);
-  display.display();
 }
 
 void PDBACK(int thesteps, int power, float gain) {
@@ -455,34 +505,11 @@ void setup() {
   computeYaw();
   yaw = computeYaw();
   halfTarget = float(yaw);
-  straight(406,155);
-  // PD(240,155,5.125);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
-  // subRightNew(203,232);
-  // PD(406,155,5.125);
+  PD(406,165,5);
   
   
   
+
   
   
 
@@ -490,6 +517,25 @@ void setup() {
   
 }
 
+/*
+
+display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.print(" Angle: ");
+    display.println(float(yaw));
+    display.print(" Target: ");
+    display.println(target);
+    display.print(" Error: ");
+    display.println(thecorrection);
+    display.print(" CountA: ");
+    display.println(counter_A);
+    display.print(" CountB: ");
+    display.println(counter_B);
+    display.display();
+
+*/
 void loop() {
   /*
    Basic code to run repeatedly
